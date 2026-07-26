@@ -1,5 +1,5 @@
 # ── Stage 1: Build the JAR ─────────────────────────────────
-FROM eclipse-temurin:21-jdk AS builder
+FROM eclipse-temurin:21-jdk-bookworm AS builder
 
 WORKDIR /app
 
@@ -14,7 +14,8 @@ COPY src ./src
 RUN ./mvnw package -DskipTests -q
 
 # ── Stage 2: Runtime image ─────────────────────────────────
-FROM eclipse-temurin:21-jre-jammy
+# Bookworm has Python 3.11+ built-in, resolving Python 3.10 deprecation warnings
+FROM eclipse-temurin:21-jre-bookworm
 
 # Install yt-dlp + ffmpeg (needed for audio extraction)
 RUN apt-get update && \

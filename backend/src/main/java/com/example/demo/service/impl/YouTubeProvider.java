@@ -1,12 +1,12 @@
 package com.example.demo.service.impl;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.example.demo.model.MediaInfo;
 import com.example.demo.service.DownloadTracker;
 import com.example.demo.service.FileDownloader;
 import com.example.demo.service.MetadataFetcher;
 import com.example.demo.util.ProcessExecutor;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -20,13 +20,18 @@ import java.util.regex.Pattern;
 @Service
 public class YouTubeProvider implements MetadataFetcher, FileDownloader {
 
+    private final ProcessExecutor processExecutor;
     private final DownloadTracker downloadTracker;
-    private final ProcessExecutor processExecutor = new ProcessExecutor();
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private final Pattern progressPattern = Pattern.compile("\\[download\\]\\s+(\\d+(?:\\.\\d+)?)%");
+    private final Pattern progressPattern = Pattern.compile("\\[download\\]\\s+(\\d+\\.\\d+)%");
+
+    // Realistic Mobile User Agent to avoid YouTube datacenter IP bot detection
+    private static final String USER_AGENT = "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36";
+    private static final String EXTRACTOR_ARGS = "youtube:player_client=mweb,android,ios,web";
 
     @Autowired
-    public YouTubeProvider(DownloadTracker downloadTracker) {
+    public YouTubeProvider(ProcessExecutor processExecutor, DownloadTracker downloadTracker) {
+        this.processExecutor = processExecutor;
         this.downloadTracker = downloadTracker;
     }
 
@@ -46,6 +51,9 @@ public class YouTubeProvider implements MetadataFetcher, FileDownloader {
             "--dump-json",
             "--no-warnings",
             "--no-playlist",
+            "--force-ipv4",
+            "--extractor-args", EXTRACTOR_ARGS,
+            "--user-agent", USER_AGENT,
             url
         );
 
@@ -68,6 +76,11 @@ public class YouTubeProvider implements MetadataFetcher, FileDownloader {
         List<String> command = new ArrayList<>();
         command.add("yt-dlp");
         command.add("--no-playlist");
+        command.add("--force-ipv4");
+        command.add("--extractor-args");
+        command.add(EXTRACTOR_ARGS);
+        command.add("--user-agent");
+        command.add(USER_AGENT);
 
         if ("audio".equalsIgnoreCase(type)) {
             command.add("-f");
@@ -113,8 +126,8 @@ public class YouTubeProvider implements MetadataFetcher, FileDownloader {
             } else {
                 throw new RuntimeException("Downloaded file not found on disk");
             }
-
         } catch (Exception e) {
+            downloadTracker.updateStatus(downloadId, "ERROR");
             downloadTracker.setError(downloadId, e.getMessage());
             throw e;
         }
