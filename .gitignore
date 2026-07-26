@@ -13,6 +13,12 @@ target/
 *.jar
 *.war
 
+# Python build/cache output
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
 # Temporary downloads folder
 downloads/
 *.mp4

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MidiaLoad - YouTube Downloader</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="background-decor">
+        <div class="circle circle-1"></div>
+        <div class="circle circle-2"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <div class="logo">
+                <i data-lucide="download-cloud" class="logo-icon"></i>
+                <h1>Midia<span>Load</span></h1>
+            </div>
+            <p class="subtitle">Baixe áudio ou vídeo do YouTube sem anúncios, rápido e direto no seu celular.</p>
+        </header>
+
+        <main>
+            <div class="card">
+                <form id="download-form">
+                    <div class="input-group">
+                        <i data-lucide="link-2" class="input-icon"></i>
+                        <input type="url" id="youtube-url" placeholder="Cole o link do YouTube aqui..." required>
+                    </div>
+
+                    <button type="submit" id="search-btn" class="btn btn-primary">
+                        <span>Analisar Vídeo</span>
+                        <i data-lucide="arrow-right"></i>
+                    </button>
+                </form>
+
+                <div id="preview-container" class="preview-container hidden">
+                    <div class="video-preview">
+                        <img id="video-thumbnail" src="" alt="Thumbnail do vídeo">
+                        <div class="video-info">
+                            <h3 id="video-title">Título do Vídeo</h3>
+                            <p class="video-duration">
+                                <i data-lucide="clock"></i>
+                                <span id="video-duration-val">00:00</span>
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="download-options">
+                        <button id="download-audio-btn" class="btn btn-audio">
+                            <i data-lucide="music"></i>
+                            <span>Baixar áudio</span>
+                        </button>
+                        <button id="download-video-btn" class="btn btn-video">
+                            <i data-lucide="video"></i>
+                            <span>Baixar vídeo</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="status-container" class="status-container hidden">
+                    <div class="spinner-wrapper">
+                        <div class="spinner"></div>
+                    </div>
+                    <p id="status-text">Buscando informações do vídeo...</p>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <p>&copy; 2026 MidiaLoad. Feito para uso pessoal e familiar.</p>
+        </footer>
+    </div>
+
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+</html>
