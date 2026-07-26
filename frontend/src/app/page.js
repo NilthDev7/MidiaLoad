@@ -23,7 +23,7 @@ export default function Home() {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [showIOSPrompt, setShowIOSPrompt] = useState(false);
 
-  const backendUrl = "http://localhost:8085";
+  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8085";
 
   useEffect(() => {
     // Register Service Worker for PWA
