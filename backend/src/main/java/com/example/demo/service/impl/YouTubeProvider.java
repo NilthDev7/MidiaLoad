@@ -25,9 +25,9 @@ public class YouTubeProvider implements MetadataFetcher, FileDownloader {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final Pattern progressPattern = Pattern.compile("\\[download\\]\\s+(\\d+\\.\\d+)%");
 
-    // Realistic Mobile User Agent to avoid YouTube datacenter IP bot detection
+    // Use pure mobile player clients (android, ios, mweb) to bypass YouTube datacenter IP bot verification
     private static final String USER_AGENT = "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36";
-    private static final String EXTRACTOR_ARGS = "youtube:player_client=mweb,android,ios,web";
+    private static final String EXTRACTOR_ARGS = "youtube:player_client=android,ios,mweb";
 
     @Autowired
     public YouTubeProvider(ProcessExecutor processExecutor, DownloadTracker downloadTracker) {
@@ -52,6 +52,7 @@ public class YouTubeProvider implements MetadataFetcher, FileDownloader {
             "--no-warnings",
             "--no-playlist",
             "--force-ipv4",
+            "--geo-bypass",
             "--extractor-args", EXTRACTOR_ARGS,
             "--user-agent", USER_AGENT,
             url
@@ -77,6 +78,7 @@ public class YouTubeProvider implements MetadataFetcher, FileDownloader {
         command.add("yt-dlp");
         command.add("--no-playlist");
         command.add("--force-ipv4");
+        command.add("--geo-bypass");
         command.add("--extractor-args");
         command.add(EXTRACTOR_ARGS);
         command.add("--user-agent");
