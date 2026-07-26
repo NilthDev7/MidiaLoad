@@ -1,0 +1,10 @@
+{
+  "name": "midiaload-root",
+  "private": true,
+  "dependencies": {
+    "next": "15.5.22"
+  },
+  "scripts": {
+    "build": "cd frontend && npm install && npm run build"
+  }
+}
