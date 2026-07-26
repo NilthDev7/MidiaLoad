@@ -1,5 +1,7 @@
 package com.example.demo.util;
 
+import org.springframework.stereotype.Component;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStreamReader;
@@ -7,6 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.function.Consumer;
 
+@Component
 public class ProcessExecutor {
 
     /**
@@ -24,35 +27,32 @@ public class ProcessExecutor {
 
         Process process = builder.start();
 
-        StringBuilder output = new StringBuilder();
+        StringBuilder stdout = new StringBuilder();
         try (BufferedReader reader = new BufferedReader(
                 new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
             String line;
             while ((line = reader.readLine()) != null) {
-                output.append(line).append("\n");
+                stdout.append(line).append("\n");
             }
         }
 
         int exitCode = process.waitFor();
         if (exitCode != 0) {
-            throw new RuntimeException("yt-dlp exited with code " + exitCode +
-                    ". Check the server console for details.");
+            throw new RuntimeException("yt-dlp exited with code " + exitCode + ". Check the server console for details.");
         }
 
-        return output.toString().trim();
+        return stdout.toString().trim();
     }
 
     /**
-     * Executes a command and passes each output line to the provided consumer.
-     * stderr is merged into stdout so that yt-dlp progress lines are captured.
+     * Executes a command and streams each line of stdout to a consumer (e.g. for progress tracking).
      */
     public void executeWithLineConsumer(List<String> command, File workingDir, Consumer<String> lineConsumer) throws Exception {
         ProcessBuilder builder = new ProcessBuilder(command);
         if (workingDir != null) {
             builder.directory(workingDir);
         }
-        // Merge stderr into stdout to capture yt-dlp progress lines
-        builder.redirectErrorStream(true);
+        builder.redirectError(ProcessBuilder.Redirect.INHERIT);
 
         Process process = builder.start();
 
@@ -60,13 +60,15 @@ public class ProcessExecutor {
                 new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
             String line;
             while ((line = reader.readLine()) != null) {
-                lineConsumer.accept(line);
+                if (lineConsumer != null) {
+                    lineConsumer.accept(line);
+                }
             }
         }
 
         int exitCode = process.waitFor();
         if (exitCode != 0) {
-            throw new RuntimeException("yt-dlp download process failed with exit code " + exitCode);
+            throw new RuntimeException("yt-dlp download process exited with code " + exitCode);
         }
     }
 }
