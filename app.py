@@ -2,118 +2,123 @@ import os
 import shutil
 import uuid
 from mimetypes import guess_type
+from pathlib import Path
 from urllib.parse import quote
 
-from flask import Flask, Response, jsonify, render_template, request
+from flask import Flask, Response, render_template, request
 import yt_dlp
 
 
-app = Flask(__name__)
+BASE_DIR = Path(__file__).resolve().parent
+DOWNLOAD_DIR = Path(os.getenv("TMPDIR", "/tmp")) / "midiaload-downloads"
+DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
-# Vercel/serverless environments only guarantee write access to /tmp.
-DOWNLOAD_DIR = os.path.join(os.getenv("TMPDIR", "/tmp"), "midiaload-downloads")
-os.makedirs(DOWNLOAD_DIR, exist_ok=True)
+app = Flask(
+    __name__,
+    template_folder=str(BASE_DIR / "templates"),
+    static_folder=str(BASE_DIR / "static"),
+)
 
 
-@app.route("/")
-def index():
-    return render_template("index.html")
+def format_duration(seconds):
+    if not seconds:
+        return "Desconhecido"
+
+    minutes, secs = divmod(int(seconds), 60)
+    hours, minutes = divmod(minutes, 60)
+    if hours:
+        return f"{hours:02d}:{minutes:02d}:{secs:02d}"
+    return f"{minutes:02d}:{secs:02d}"
 
 
-@app.route("/api/info", methods=["POST"])
-def get_info():
-    data = request.get_json(silent=True) or {}
-    url = data.get("url")
-
-    if not url:
-        return jsonify({"error": "URL inválida"}), 400
-
-    ydl_opts = {
+def fetch_video_info(url):
+    options = {
         "quiet": True,
         "no_warnings": True,
+        "skip_download": True,
     }
 
-    try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=False)
+    with yt_dlp.YoutubeDL(options) as ydl:
+        info = ydl.extract_info(url, download=False)
 
-        title = info.get("title", "Vídeo sem título")
-        thumbnail = info.get("thumbnail", "")
-        duration = info.get("duration", 0)
-
-        if duration:
-            mins, secs = divmod(duration, 60)
-            hours, mins = divmod(mins, 60)
-            duration_str = f"{hours:02d}:{mins:02d}:{secs:02d}" if hours else f"{mins:02d}:{secs:02d}"
-        else:
-            duration_str = "Desconhecido"
-
-        return jsonify(
-            {
-                "title": title,
-                "thumbnail": thumbnail,
-                "duration": duration_str,
-                "url": url,
-            }
-        )
-    except Exception as exc:
-        return jsonify({"error": f"Erro ao obter informações: {exc}"}), 500
+    return {
+        "url": url,
+        "title": info.get("title") or "Vídeo sem título",
+        "thumbnail": info.get("thumbnail") or "",
+        "duration": format_duration(info.get("duration")),
+    }
 
 
-@app.route("/api/download", methods=["POST"])
-def download():
-    data = request.get_json(silent=True) or {}
-    url = data.get("url")
-    download_type = data.get("type")
+def download_media(url, media_type):
+    download_path = DOWNLOAD_DIR / str(uuid.uuid4())
+    download_path.mkdir(parents=True, exist_ok=True)
 
-    if not url or download_type not in ["video", "audio"]:
-        return jsonify({"error": "Parâmetros inválidos"}), 400
-
-    temp_download_path = os.path.join(DOWNLOAD_DIR, str(uuid.uuid4()))
-    os.makedirs(temp_download_path, exist_ok=True)
-
-    ydl_opts = {
-        "outtmpl": os.path.join(temp_download_path, "%(title)s.%(ext)s"),
+    options = {
+        "outtmpl": str(download_path / "%(title).180B.%(ext)s"),
         "quiet": True,
         "no_warnings": True,
         "noprogress": True,
+        "restrictfilenames": True,
     }
 
-    if download_type == "audio":
-        ydl_opts["format"] = "m4a/bestaudio/best"
+    if media_type == "audio":
+        options["format"] = "m4a/bestaudio/best"
     else:
-        ydl_opts["format"] = "best[ext=mp4]/best"
+        options["format"] = "best[ext=mp4]/best"
 
     try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        with yt_dlp.YoutubeDL(options) as ydl:
             ydl.extract_info(url, download=True)
 
-        files = os.listdir(temp_download_path)
+        files = [item for item in download_path.iterdir() if item.is_file()]
         if not files:
-            return jsonify({"error": "Arquivo não pôde ser baixado"}), 500
+            raise RuntimeError("Arquivo não pôde ser baixado.")
 
-        actual_filename = files[0]
-        file_path = os.path.join(temp_download_path, actual_filename)
+        file_path = files[0]
+        file_bytes = file_path.read_bytes()
+        filename = file_path.name
+        content_type = guess_type(filename)[0] or "application/octet-stream"
+        return file_bytes, filename, content_type
+    finally:
+        shutil.rmtree(download_path, ignore_errors=True)
 
-        with open(file_path, "rb") as file_obj:
-            file_bytes = file_obj.read()
 
-        shutil.rmtree(temp_download_path)
-        content_type = guess_type(actual_filename)[0] or "application/octet-stream"
-        quoted_filename = quote(actual_filename)
-        disposition = f"attachment; filename*=UTF-8''{quoted_filename}"
+@app.get("/")
+def home():
+    return render_template("index.html")
 
+
+@app.post("/info")
+def info():
+    url = request.form.get("url", "").strip()
+    if not url:
+        return render_template("index.html", error="Cole um link do YouTube para continuar."), 400
+
+    try:
+        video = fetch_video_info(url)
+        return render_template("index.html", video=video)
+    except Exception as exc:
+        return render_template("index.html", error=f"Não consegui ler esse vídeo: {exc}", url=url), 500
+
+
+@app.post("/download")
+def download():
+    url = request.form.get("url", "").strip()
+    media_type = request.form.get("type", "").strip()
+
+    if not url or media_type not in {"audio", "video"}:
+        return render_template("index.html", error="Pedido de download inválido.", url=url), 400
+
+    try:
+        file_bytes, filename, content_type = download_media(url, media_type)
+        quoted_filename = quote(filename)
         return Response(
             file_bytes,
             mimetype=content_type,
-            headers={"Content-Disposition": disposition},
+            headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quoted_filename}"},
         )
     except Exception as exc:
-        try:
-            shutil.rmtree(temp_download_path)
-        except Exception:
-            pass
-        return jsonify({"error": f"Erro ao processar download: {exc}"}), 500
+        return render_template("index.html", error=f"Erro ao baixar: {exc}", url=url), 500
 
 
 if __name__ == "__main__":

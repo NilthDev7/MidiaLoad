@@ -1,85 +1,66 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MidiaLoad - YouTube Downloader</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>MidiaLoad</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <div class="background-decor">
-        <div class="circle circle-1"></div>
-        <div class="circle circle-2"></div>
-    </div>
+    <main class="page">
+        <section class="shell">
+            <header class="hero">
+                <p class="eyebrow">YouTube downloader</p>
+                <h1>MidiaLoad</h1>
+                <p>Baixe áudio ou vídeo direto pelo navegador, sem painel complicado.</p>
+            </header>
 
-    <div class="container">
-        <header>
-            <div class="logo">
-                <i data-lucide="download-cloud" class="logo-icon"></i>
-                <h1>Midia<span>Load</span></h1>
-            </div>
-            <p class="subtitle">Baixe áudio ou vídeo do YouTube sem anúncios, rápido e direto no seu celular.</p>
-        </header>
-
-        <main>
-            <div class="card">
-                <form id="download-form">
-                    <div class="input-group">
-                        <i data-lucide="link-2" class="input-icon"></i>
-                        <input type="url" id="youtube-url" placeholder="Cole o link do YouTube aqui..." required>
-                    </div>
-
-                    <button type="submit" id="search-btn" class="btn btn-primary">
-                        <span>Analisar Vídeo</span>
-                        <i data-lucide="arrow-right"></i>
-                    </button>
-                </form>
-
-                <div id="preview-container" class="preview-container hidden">
-                    <div class="video-preview">
-                        <img id="video-thumbnail" src="" alt="Thumbnail do vídeo">
-                        <div class="video-info">
-                            <h3 id="video-title">Título do Vídeo</h3>
-                            <p class="video-duration">
-                                <i data-lucide="clock"></i>
-                                <span id="video-duration-val">00:00</span>
-                            </p>
-                        </div>
-                    </div>
-
-                    <div class="download-options">
-                        <button id="download-audio-btn" class="btn btn-audio">
-                            <i data-lucide="music"></i>
-                            <span>Baixar áudio</span>
-                        </button>
-                        <button id="download-video-btn" class="btn btn-video">
-                            <i data-lucide="video"></i>
-                            <span>Baixar vídeo</span>
-                        </button>
-                    </div>
+            <form class="search" action="/info" method="post">
+                <label for="url">Link do YouTube</label>
+                <div class="search-row">
+                    <input
+                        id="url"
+                        name="url"
+                        type="url"
+                        value="{{ video.url if video else url or '' }}"
+                        placeholder="https://www.youtube.com/watch?v=..."
+                        required
+                    >
+                    <button type="submit">Analisar</button>
                 </div>
+            </form>
 
-                <div id="status-container" class="status-container hidden">
-                    <div class="spinner-wrapper">
-                        <div class="spinner"></div>
+            {% if error %}
+                <div class="alert">{{ error }}</div>
+            {% endif %}
+
+            {% if video %}
+                <section class="preview">
+                    {% if video.thumbnail %}
+                        <img src="{{ video.thumbnail }}" alt="Thumbnail do vídeo">
+                    {% endif %}
+
+                    <div class="preview-info">
+                        <h2>{{ video.title }}</h2>
+                        <p>Duração: {{ video.duration }}</p>
                     </div>
-                    <p id="status-text">Buscando informações do vídeo...</p>
-                </div>
-            </div>
-        </main>
 
-        <footer>
-            <p>&copy; 2026 MidiaLoad. Feito para uso pessoal e familiar.</p>
-        </footer>
-    </div>
+                    <div class="actions">
+                        <form action="/download" method="post">
+                            <input type="hidden" name="url" value="{{ video.url }}">
+                            <input type="hidden" name="type" value="audio">
+                            <button class="audio" type="submit">Baixar áudio</button>
+                        </form>
 
-    <script src="{{ url_for('static', filename='app.js') }}"></script>
-    <script>
-        lucide.createIcons();
-    </script>
+                        <form action="/download" method="post">
+                            <input type="hidden" name="url" value="{{ video.url }}">
+                            <input type="hidden" name="type" value="video">
+                            <button class="video" type="submit">Baixar vídeo</button>
+                        </form>
+                    </div>
+                </section>
+            {% endif %}
+        </section>
+    </main>
 </body>
 </html>
